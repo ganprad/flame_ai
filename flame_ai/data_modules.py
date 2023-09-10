@@ -8,9 +8,9 @@ class FlowFieldDataset(Dataset):
     def __init__(self, input_path, mode):
         assert mode in ["train", "val", "test"]
         self.mode = mode
-        self.csv_file = pd.read_csv(input_path + f"{mode}.csv").iloc[:100]
+        self.csv_file = pd.read_csv(input_path + f"{mode}.csv")
         if mode == "test":
-            self.csv_file = pd.read_csv(input_path + f"{mode}.csv").reset_index().to_dict(orient="list")
+            self.csv_file = pd.read_csv(input_path + f"{mode}.csv")
         self.LR_path = input_path + "flowfields/LR/" + mode
         self.HR_path = input_path + "flowfields/HR/" + mode
 
@@ -21,7 +21,7 @@ class FlowFieldDataset(Dataset):
         return (x - self.mean) / self.std
 
     def __len__(self):
-        return 100  # len(self.csv_file)
+        return len(self.csv_file)
 
     def __getitem__(self, idx):
         # input
