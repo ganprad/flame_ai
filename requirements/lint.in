@@ -1,0 +1,19 @@
+-c prod.txt
+-c dev.txt
+
+bandit
+black
+ruff
+darglint
+flake8
+flake8-annotations
+flake8-bandit
+flake8-bugbear
+flake8-black
+flake8-docstrings
+flake8-import-order
+mypy==0.960
+# mypy version also pinned in .pre-commit-config.yaml
+safety
+shellcheck-py
+types-toml

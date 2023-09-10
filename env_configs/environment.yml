@@ -1,0 +1,14 @@
+name: flame_ai_gpu
+channels:
+  - defaults
+  - pytorch
+  - conda-forge
+dependencies:
+  - python=3.9
+  - cudatoolkit=11.4
+  - cudnn
+  - pytorch
+  - pip
+  - pip:
+      - pip-tools
+      - setuptools==59.5.0

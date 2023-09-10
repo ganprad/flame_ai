@@ -1,0 +1,20 @@
+[tool.isort]
+line_length = 120
+
+[tool.black]
+line-length = 120
+target-version = ["py38"]
+
+[tool.flake8]
+max-complexity = 10
+max-line-length = 100
+extend-ignore = """
+        W503,
+        E203,
+        E701,
+        E501
+    """  # configured in .flake8
+[tool.darglint]# configured in .flake8
+
+
+[tool.pytest]

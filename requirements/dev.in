@@ -1,0 +1,17 @@
+-c prod.txt
+
+bandit
+editdistance
+itermplot
+seaborn
+pycodestyle
+pydocstyle
+pre-commit
+pyyaml
+tornado
+safety
+scipy
+pyarrow
+names_generator
+#tensorflow
+#keras

@@ -1,0 +1,14 @@
+name: flame_ai_cpu
+channels:
+  - defaults
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.9
+  - numba
+  - numpy
+  - pytorch
+  - pip
+  - pip:
+    - pip-tools
+    - setuptools==59.5.0
