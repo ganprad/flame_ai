@@ -27,11 +27,12 @@ def train():
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
+    NUM_EPOCHS = 20
     IN_CHANNELS = 4
     FACTOR = 2
     NUM_FILTERS = 64
     NUM_OF_RESIDUAL_BLOCKS = 16
-    BATCH_SIZE = 16
+    BATCH_SIZE = 32
     SCALE = 3
     KERNEL_SIZE = 3
 
@@ -96,6 +97,8 @@ def train():
     for idx, batch in enumerate(test_dataloader):
         id, inputs = batch
         outputs = model(inputs)
+        outputs = test_dataset.normalize(outputs)
+        outputs = outputs.permute(0, 2, 3, 1)
         predictions[idx] = outputs.cpu().detach().numpy().flatten(order="C").astype(np.float32)
         ids.append(id.cpu().detach().numpy()[0])
         progress_bar.set_description(f"test prediction: {idx}")
