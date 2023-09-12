@@ -16,10 +16,9 @@ class FlowFieldDataset(Dataset):
 
         self.mean = np.array([0.24, 28.0, 28.0, 28.0])
         self.std = np.array([0.068, 48.0, 48.0, 48.0])
-        self.normalize = Normalize(self.mean, self.std, inplace=True)
 
     def transform(self, x):
-        return Compose([ToTensor(), self.normalize])(x)
+        return Compose([ToTensor(), Normalize(self.mean, self.std, inplace=True)])(x)
 
     def __len__(self):
         return len(self.csv_file)

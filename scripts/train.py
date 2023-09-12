@@ -89,15 +89,12 @@ def train():
             progress_bar.set_description(f"epoch : {epoch} | batch {step} | val_loss : {val_loss.detach().cpu()}")
         progress_bar.update(1)
 
-    accelerator.end_training()
-
     progress_bar = tqdm(range(len(test_dataloader)))
     predictions = {}
     ids = []
     for idx, batch in enumerate(test_dataloader):
         id, inputs = batch
         outputs = model(inputs)
-        outputs = test_dataset.normalize(outputs)
         outputs = outputs.permute(0, 2, 3, 1)
         predictions[idx] = outputs.cpu().detach().numpy().flatten(order="C").astype(np.float32)
         ids.append(id.cpu().detach().numpy()[0])
