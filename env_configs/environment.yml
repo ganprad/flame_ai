@@ -1,4 +1,4 @@
-name: flame_ai_gpu
+name: flame_ai
 channels:
   - defaults
   - pytorch

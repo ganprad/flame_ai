@@ -20,14 +20,14 @@ def train():
     output_path = base_path + "outputs/"
 
     # create directories for checkpoints and logs
-    log_dir = output_path + "logs"
+    log_dir = output_path + "logs/"
     checkpoint_dir = output_path + "ckpt/"
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
-    NUM_EPOCHS = 20
+    NUM_EPOCHS = 100
     IN_CHANNELS = 4
     FACTOR = 2
     NUM_FILTERS = 64
@@ -43,6 +43,9 @@ def train():
     val_dataloader = DataLoader(dataset=val_dataset, batch_size=BATCH_SIZE, shuffle=True, pin_memory=False)
     test_dataloader = DataLoader(dataset=test_dataset, batch_size=1, shuffle=True, pin_memory=False)
 
+    ckpt_name = f"{generate_name()}"
+    learning_rate = 1e-3
+
     model = Model(
         in_channels=IN_CHANNELS,
         num_filters=NUM_FILTERS,
@@ -51,45 +54,42 @@ def train():
         scale=SCALE,
         kernel_size=KERNEL_SIZE,
     )
-    optimizer = Adam(params=model.parameters(), lr=1e-3)
+    optimizer = Adam(params=model.parameters(), lr=learning_rate)
     scheduler = ReduceLROnPlateau(optimizer=optimizer)
 
     accelerator = Accelerator()
-    model, optimizer, train_dataloader, val_dataloader, scheduler = accelerator.prepare(
-        model, optimizer, train_dataloader, val_dataloader, scheduler
+    model, optimizer, train_dataloader, val_dataloader, test_dataloader, scheduler = accelerator.prepare(
+        model, optimizer, train_dataloader, val_dataloader, test_dataloader, scheduler
     )
 
     # Register the LR scheduler
     accelerator.register_for_checkpointing(scheduler)
     # Save the starting state
-    ckpt_name = f"{generate_name()}"
+
     accelerator.save_state(output_dir=checkpoint_dir + ckpt_name)
-
-    num_epochs = 1
-    num_training_steps = num_epochs * len(train_dataloader)
-    progress_bar = tqdm(range(num_training_steps))
-
-    for epoch in range(num_epochs):
+    progress_bar = tqdm(range(NUM_EPOCHS))
+    for epoch in range(NUM_EPOCHS):
         model.train()
-        for batch in train_dataloader:
+        for step, batch in enumerate(train_dataloader):
             inputs, targets = batch
             outputs = model(inputs)
             loss = F.mse_loss(outputs, targets)
             optimizer.zero_grad()
             accelerator.backward(loss)
             optimizer.step()
-            progress_bar.set_description(f"epoch : {epoch} | loss : {loss.detach().cpu()}")
+            progress_bar.set_description(f"epoch : {epoch} | batch {step} | loss : {loss.detach().cpu()}")
 
         scheduler.step(loss.detach().cpu())
 
         model.eval()
-        for batch in val_dataloader:
+        for step, batch in enumerate(val_dataloader):
             inputs, targets = batch
             outputs = model(inputs)
             val_loss = F.mse_loss(outputs, targets)
-            progress_bar.set_description(f"epoch : {epoch} | val_loss : {val_loss.detach().cpu()}")
-            progress_bar.update(1)
-    progress_bar.close()
+            progress_bar.set_description(f"epoch : {epoch} | batch {step} | val_loss : {val_loss.detach().cpu()}")
+        progress_bar.update(1)
+
+    accelerator.end_training()
 
     progress_bar = tqdm(range(len(test_dataloader)))
     predictions = {}

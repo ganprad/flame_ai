@@ -13,5 +13,6 @@ safety
 scipy
 pyarrow
 names_generator
+kaggle
 #tensorflow
 #keras
