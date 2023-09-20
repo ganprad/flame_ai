@@ -2,13 +2,31 @@ import torch
 import torch.nn as nn
 
 
+def massflux(ff, flatten=True):
+    """
+    Assuming flowfield ff => [rho, ux, uy, uz]
+    """
+    if flatten:
+        ff = ff.squeeze()
+        flux = ff[..., 0].unsqueeze(-1) * ff[..., 1:]
+        return flux / flux.norm()
+    flux = ff[:, 0, ...] * ff[:, 1:, ...].squeeze(0)
+    return flux / flux.norm()
+
+
+def continuity_loss(preds, targets):
+    preds = massflux(preds)
+    targets = massflux(targets)
+    return nn.MSELoss()(preds, targets)
 class ResNetBlock(nn.Module):
-    def __init__(self, in_channels, num_filters, kernel_size=3):
+    def __init__(self, num_filters, kernel_size=3):
         super(ResNetBlock, self).__init__()
         self.resnet_block = torch.nn.Sequential(
             *[
                 nn.Conv2d(num_filters, num_filters, kernel_size, padding="same"),
+                nn.Softplus(),
                 nn.Conv2d(num_filters, num_filters, kernel_size, padding="same"),
+                nn.Softplus(),
             ]
         )
         self.input = nn.Sequential()
@@ -21,7 +39,14 @@ class ResNetBlock(nn.Module):
 
 class Model(nn.Module):
     def __init__(
-        self, in_channels=4, factor=2, scale=3, num_of_residual_blocks=16, num_filters=64, kernel_size=3, **kwargs
+        self,
+        in_channels,
+        factor,
+        scale,
+        num_of_residual_blocks,
+        num_filters,
+        kernel_size,
+        do_upsample=True,
     ):
         super().__init__()
         self.num_of_residual_blocks = num_of_residual_blocks
@@ -33,29 +58,38 @@ class Model(nn.Module):
         self.res_blocks = nn.Sequential(
             *[
                 ResNetBlock(
-                    in_channels=in_channels,
                     num_filters=num_filters,
                     kernel_size=kernel_size,
                 )
             ]
             * num_of_residual_blocks
         )
-        # Upsampling (factor ** 2) ** scale times : (2**2)**3 : 16*16 -> 128 * 128
-        self.upsample = nn.Sequential(
-            *[
-                nn.Conv2d(num_filters, num_filters * (factor**2), kernel_size, padding="same", **kwargs),
-                nn.PixelShuffle(upscale_factor=factor),
-            ]
-            * scale
-        )
-        self.resnet_input = nn.Conv2d(in_channels, num_filters, 1, padding="same")
+        self.do_upsample = do_upsample
+        if self.do_upsample:
+            # Upsampling (factor ** 2) ** scale times : (2**(2**3)) : 16*16 -> 128 * 128
+            self.upsample = nn.Sequential(
+                *[
+                    nn.Conv2d(num_filters, num_filters * (factor**2), kernel_size, padding="same"),
+                    nn.PixelShuffle(upscale_factor=factor),
+                ]
+                * scale
+            )
+            self.lr = nn.Sequential(
+                *[
+                    nn.Conv2d(num_filters, num_filters, kernel_size, padding="same"),
+                    nn.PixelShuffle(upscale_factor=1),
+                ]
+                * scale
+            )
+            self.output_layer_lr = nn.Conv2d(num_filters, in_channels, 3, padding="same")
+        self.input_layer = nn.Conv2d(in_channels, num_filters, 3, padding="same")
         self.output_layer = nn.Conv2d(num_filters, in_channels, 3, padding="same")
-        self.resnet_out = nn.Conv2d(self.num_filters, self.num_filters, self.kernel_size, padding="same")
 
     def forward(self, x):
-        x = self.resnet_input(x)
+        x = nn.Softplus()(self.input_layer(x))
         x_res = self.res_blocks(x)
-        x_res = self.resnet_out(x_res)
         out = x + x_res
-        out = self.upsample(out)
+        if self.do_upsample:
+            up = self.upsample(out)
+            return self.output_layer_lr(self.lr(out)), self.output_layer(up)
         return self.output_layer(out)
